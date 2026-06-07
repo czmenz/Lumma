@@ -11,6 +11,14 @@ local ClientSettings = {
 	ClientColor = Color3.fromRGB(0, 170, 255)
 }
 
+local STAFF_BADGE_ICON = "97177680266798"
+local staff_names = {
+	Czmenz = {
+		Text = "Owner",
+		Icon = STAFF_BADGE_ICON
+	}
+}
+
 local player = Players.LocalPlayer
 local trackedConnections = {}
 local activePopup
@@ -49,12 +57,16 @@ local function GetMousePosition()
 	return Vector2.new(mouse.X, mouse.Y)
 end
 
+local function AssetThumbnailPath(assetID)
+	return "rbxthumb://type=Asset&id=" .. tostring(assetID) .. "&w=150&h=150"
+end
+
 local function NormalizeIconPath(iconID)
 	if not iconID then
 		return nil
 	end
 	if type(iconID) == "number" then
-		return "rbxassetid://" .. tostring(iconID)
+		return AssetThumbnailPath(iconID)
 	end
 	if type(iconID) ~= "string" then
 		return nil
@@ -63,13 +75,37 @@ local function NormalizeIconPath(iconID)
 	if cleaned == "" then
 		return nil
 	end
-	if cleaned:match("^rbxassetid://") or cleaned:match("^rbxasset://") or cleaned:match("^https?://") then
+	if cleaned:match("^rbxassetid://") or cleaned:match("^rbxasset://") or cleaned:match("^rbxthumb://") or cleaned:match("^https?://") then
 		return cleaned
 	end
 	if cleaned:match("^%d+$") then
-		return "rbxassetid://" .. cleaned
+		return AssetThumbnailPath(cleaned)
 	end
 	return cleaned
+end
+
+local function GetStaffInfo()
+	local playerName = string.lower(tostring(player.Name or ""))
+	local displayName = string.lower(tostring(player.DisplayName or ""))
+
+	for staffName, info in pairs(staff_names) do
+		local key = string.lower(tostring(staffName))
+		if key == playerName or key == displayName then
+			if type(info) == "table" then
+				return {
+					Text = tostring(info.Text or info.Role or info.Label or info.Title or "Staff"),
+					Icon = NormalizeIconPath(info.Icon or info.IconID or info.IconId or STAFF_BADGE_ICON)
+				}
+			end
+
+			return {
+				Text = tostring(info),
+				Icon = NormalizeIconPath(STAFF_BADGE_ICON)
+			}
+		end
+	end
+
+	return nil
 end
 
 local function IsPointInsideGui(guiObject, point)
@@ -515,15 +551,8 @@ if not unlockMouseRenderConn and not RunService:IsBoundToRenderStep(unlockRender
 			mainRef.Visible = true
 			popupLayerRef.Visible = true
 			StartMouseUnlock()
-			-- Ensure base transparencies are captured from visible state
-			RefreshFadeBases()
 			menuFadeDriver.Value = 1
 			ApplyMenuFade(1)
-			if task and task.wait then
-				task.wait(0.03)
-			elseif wait then
-				wait(0.03)
-			end
 			TweenMenuFade(0, menuFadeDuration, function()
 				if menuVisible then
 					menuFadeDriver.Value = 0
@@ -531,6 +560,7 @@ if not unlockMouseRenderConn and not RunService:IsBoundToRenderStep(unlockRender
 				end
 			end)
 		else
+			RefreshFadeBases()
 			TweenMenuFade(1, menuFadeDuration, function()
 				if not menuVisible and typeof(mainRef) == "Instance" and typeof(popupLayerRef) == "Instance" then
 					mainRef.Visible = false
@@ -649,7 +679,49 @@ if not unlockMouseRenderConn and not RunService:IsBoundToRenderStep(unlockRender
 	local user = Create("Frame", {Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 1, -70), BackgroundTransparency = 1, ZIndex = 3}, side)
 	local avatar = Create("ImageLabel", {Size = UDim2.new(0, 38, 0, 38), Position = UDim2.new(0, 15, 0.5, -19), Image = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48), ZIndex = 4}, user)
 	Create("UICorner", {CornerRadius = UDim.new(1, 0)}, avatar)
-	Create("TextLabel", {Size = UDim2.new(1, -65, 1, 0), Position = UDim2.new(0, 65, 0, 0), Text = player.DisplayName, Font = "GothamMedium", TextSize = 13, TextColor3 = Color3.fromRGB(180, 180, 180), TextXAlignment = "Left", BackgroundTransparency = 1, ZIndex = 4}, user)
+	local staffInfo = GetStaffInfo()
+	Create("TextLabel", {
+		Name = "UserName",
+		Size = staffInfo and UDim2.new(1, -65, 0, 22) or UDim2.new(1, -65, 1, 0),
+		Position = staffInfo and UDim2.new(0, 65, 0, 9) or UDim2.new(0, 65, 0, 0),
+		Text = player.DisplayName,
+		Font = "GothamMedium",
+		TextSize = 13,
+		TextColor3 = Color3.fromRGB(180, 180, 180),
+		TextXAlignment = "Left",
+		BackgroundTransparency = 1,
+		ZIndex = 4
+	}, user)
+
+	if staffInfo then
+		local badge = Create("Frame", {
+			Name = "StaffBadge",
+			Size = UDim2.new(1, -65, 0, 18),
+			Position = UDim2.new(0, 65, 0, 31),
+			BackgroundTransparency = 1,
+			ZIndex = 4
+		}, user)
+		Create("ImageLabel", {
+			Name = "StaffBadgeIcon",
+			Size = UDim2.new(0, 14, 0, 14),
+			Position = UDim2.new(0, 0, 0.5, -7),
+			Image = staffInfo.Icon or NormalizeIconPath(STAFF_BADGE_ICON) or "",
+			BackgroundTransparency = 1,
+			ZIndex = 5
+		}, badge)
+		Create("TextLabel", {
+			Name = "StaffBadgeText",
+			Size = UDim2.new(1, -20, 1, 0),
+			Position = UDim2.new(0, 20, 0, 0),
+			Text = staffInfo.Text,
+			Font = "GothamMedium",
+			TextSize = 11,
+			TextColor3 = ClientSettings.ClientColor,
+			TextXAlignment = "Left",
+			BackgroundTransparency = 1,
+			ZIndex = 5
+		}, badge)
+	end
 
 	self.Screen = screen
 	self.Main = main
