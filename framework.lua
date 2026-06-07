@@ -7,7 +7,7 @@ local ContextActionService = game:GetService("ContextActionService")
 local ContentProvider = game:GetService("ContentProvider")
 
 local Library = { Tabs = {} }
-local FRAMEWORK_VERSION = "1.0.7"
+local FRAMEWORK_VERSION = "1.0.8"
 local ClientSettings = {
 	ClientColor = Color3.fromRGB(0, 170, 255)
 }
@@ -474,7 +474,8 @@ function Library:Init(config)
 		Position = UDim2.new(0.5, -375, 0.5, -250),
 		BackgroundColor3 = Color3.fromRGB(11, 11, 14),
 		BorderSizePixel = 0,
-		Active = true
+		Active = true,
+		Visible = false
 	}, screen)
 
 	Create("UICorner", {CornerRadius = UDim.new(0, 10)}, main)
@@ -536,7 +537,7 @@ function Library:Init(config)
 	Create("UIListLayout", {Padding = UDim.new(0, 5), HorizontalAlignment = "Center"}, tabHolder)
 
 	local container = Create("Frame", {Position = UDim2.new(0, 190, 0, 15), Size = UDim2.new(1, -200, 1, -30), BackgroundTransparency = 1, ZIndex = 2, ClipsDescendants = true}, main)
-	local popupLayer = Create("Frame", {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, ZIndex = 200}, screen)
+	local popupLayer = Create("Frame", {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = false, ZIndex = 200}, screen)
 	mainRef = main
 	popupLayerRef = popupLayer
 
@@ -874,8 +875,8 @@ function Library:Init(config)
 	if staffInfo then
 		local badge = Create("Frame", {
 			Name = "StaffBadge",
-			Size = UDim2.new(1, -65, 0, 18),
-			Position = UDim2.new(0, 65, 0, 31),
+			Size = UDim2.new(1, -65, 0, 14),
+			Position = UDim2.new(0, 65, 0, 33),
 			BackgroundTransparency = 1,
 			ZIndex = 4
 		}, user)
@@ -889,12 +890,12 @@ function Library:Init(config)
 		}, badge)
 		Create("TextLabel", {
 			Name = "StaffBadgeText",
-			Size = UDim2.new(1, -20, 1, 0),
+			Size = UDim2.new(1, -20, 0, 14),
 			Position = UDim2.new(0, 20, 0, 0),
 			Text = staffInfo.Text,
 			Font = "GothamMedium",
 			TextSize = 11,
-			TextColor3 = ClientSettings.ClientColor,
+			TextColor3 = Color3.fromRGB(255, 255, 255),
 			TextXAlignment = "Left",
 			TextYAlignment = Enum.TextYAlignment.Center,
 			BackgroundTransparency = 1,
@@ -945,8 +946,8 @@ function Library:Init(config)
 		Create("UICorner", {CornerRadius = UDim.new(0, 6)}, tabBtn)
 
 		local iconPath = NormalizeIconPath(iconID)
-		local tabIconSize, tabIconWidth, tabIconHeight = ResolveIconSize(iconSize, 20, 20)
-		local tabLabelOffset = math.max(40, 10 + tabIconWidth + 10)
+		local tabIconSize, _, tabIconHeight = ResolveIconSize(iconSize, 20, 20)
+		local tabLabelOffset = 40
 		RegisterPreloadContent(iconPath)
 		local icon = Create("ImageLabel", {
 			Name = "TabIcon",
