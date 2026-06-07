@@ -499,7 +499,6 @@ function Library:Init(config)
 				end
 			end)
 		else
-			RefreshFadeBases()
 			TweenMenuFade(1, menuFadeDuration, function()
 				if not menuVisible and typeof(mainRef) == "Instance" and typeof(popupLayerRef) == "Instance" then
 					mainRef.Visible = false
@@ -690,9 +689,9 @@ function Library:Init(config)
 			page.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + 10)
 		end)
 
-local pageHeaderSpacer
-		if not tabsWithSubTabs[page] then
-			pageHeaderSpacer = Create("Frame", {Size = UDim2.new(1, -10, 0, 42), BackgroundTransparency = 1, LayoutOrder = 0}, page)
+local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim2.new(1, -10, 0, 42), BackgroundTransparency = 1, LayoutOrder = 0}, page)
+		if tabsWithSubTabs[page] then
+			pageHeaderSpacer.Visible = false
 		end
 		table.insert(self.Tabs, {Button = tabBtn, Page = page})
 
@@ -748,6 +747,10 @@ local pageHeaderSpacer
 
 		page:SetAttribute("HasSubTabs", true)
 		tabsWithSubTabs[page] = true
+		local pageHeaderSpacer = page:FindFirstChild("PageHeaderSpacer")
+		if pageHeaderSpacer then
+			pageHeaderSpacer:Destroy()
+		end
 		subTabsCount = subTabsCount + 1
 		updateLayoutForSubTabs()
 
