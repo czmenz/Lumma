@@ -7,7 +7,7 @@ local ContextActionService = game:GetService("ContextActionService")
 local ContentProvider = game:GetService("ContentProvider")
 
 local Library = { Tabs = {} }
-local FRAMEWORK_VERSION = "1.0.8"
+local FRAMEWORK_VERSION = "1.0.9"
 local ClientSettings = {
 	ClientColor = Color3.fromRGB(0, 170, 255)
 }
@@ -946,13 +946,15 @@ function Library:Init(config)
 		Create("UICorner", {CornerRadius = UDim.new(0, 6)}, tabBtn)
 
 		local iconPath = NormalizeIconPath(iconID)
-		local tabIconSize, _, tabIconHeight = ResolveIconSize(iconSize, 20, 20)
+		local tabIconSize, tabIconWidth, tabIconHeight = ResolveIconSize(iconSize, 20, 20)
+		local tabIconSlotX = 10
+		local tabIconSlotWidth = 20
 		local tabLabelOffset = 40
 		RegisterPreloadContent(iconPath)
 		local icon = Create("ImageLabel", {
 			Name = "TabIcon",
 			Size = tabIconSize,
-			Position = UDim2.new(0, 10, 0.5, -math.floor(tabIconHeight / 2)),
+			Position = UDim2.new(0, tabIconSlotX + math.floor((tabIconSlotWidth - tabIconWidth) / 2), 0.5, -math.floor(tabIconHeight / 2)),
 			Image = iconPath or "",
 			ImageColor3 = Color3.fromRGB(255, 255, 255),
 			BackgroundTransparency = 1,
