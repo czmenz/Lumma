@@ -6,6 +6,7 @@ local GuiService = game:GetService("GuiService")
 local ContextActionService = game:GetService("ContextActionService")
 
 local Library = { Tabs = {} }
+local FRAMEWORK_VERSION = "1.0.4"
 local ClientSettings = {
 	ClientColor = Color3.fromRGB(0, 170, 255)
 }
@@ -273,7 +274,7 @@ end
 
 function Library:Init(config)
 	config = config or {}
-	local scriptVersion = config.Version or "1.0.0"
+	local scriptVersion = config.Version or FRAMEWORK_VERSION
 	local menuFadeDuration = config.FadeDuration or 0.12
 
 	if config.AllowedPlaceIds and type(config.AllowedPlaceIds) == "table" then
@@ -1828,6 +1829,7 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 	popupLayer.Visible = false
 	ApplyMenuFade(0)
 
+	print("Loaded Lumma Framework - v1.0.4")
 	return self
 end
 
