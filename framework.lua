@@ -27,6 +27,7 @@ local activePopupArrow
 local activePopupTween
 local inlinePopupClosers = {}
 local externalFadeRoots = {}
+local resolvedIconCache = {}
 local menuFadeDriver = Instance.new("NumberValue")
 local menuFadeTween
 local mainRef = nil
@@ -57,8 +58,50 @@ local function GetMousePosition()
 	return Vector2.new(mouse.X, mouse.Y)
 end
 
-local function AssetThumbnailPath(assetID)
-	return "rbxthumb://type=Asset&id=" .. tostring(assetID) .. "&w=150&h=150"
+local function DirectAssetPath(assetID)
+	return "rbxassetid://" .. tostring(assetID)
+end
+
+local function ResolveIconAssetPath(assetID)
+	local id = tostring(assetID):match("%d+")
+	if not id then
+		return nil
+	end
+
+	if resolvedIconCache[id] then
+		return resolvedIconCache[id]
+	end
+
+	local directPath = DirectAssetPath(id)
+	local resolvedPath = directPath
+	local ok, objects = pcall(function()
+		return game:GetObjects(directPath)
+	end)
+
+	if ok and type(objects) == "table" then
+		for _, obj in ipairs(objects) do
+			if typeof(obj) == "Instance" then
+				if (obj:IsA("Decal") or obj:IsA("Texture")) and type(obj.Texture) == "string" and obj.Texture ~= "" then
+					resolvedPath = obj.Texture
+					break
+				elseif (obj:IsA("ImageLabel") or obj:IsA("ImageButton")) and type(obj.Image) == "string" and obj.Image ~= "" then
+					resolvedPath = obj.Image
+					break
+				end
+			end
+		end
+
+		for _, obj in ipairs(objects) do
+			if typeof(obj) == "Instance" then
+				pcall(function()
+					obj:Destroy()
+				end)
+			end
+		end
+	end
+
+	resolvedIconCache[id] = resolvedPath
+	return resolvedPath
 end
 
 local function NormalizeIconPath(iconID)
@@ -66,7 +109,7 @@ local function NormalizeIconPath(iconID)
 		return nil
 	end
 	if type(iconID) == "number" then
-		return AssetThumbnailPath(iconID)
+		return ResolveIconAssetPath(iconID)
 	end
 	if type(iconID) ~= "string" then
 		return nil
@@ -79,7 +122,7 @@ local function NormalizeIconPath(iconID)
 		return cleaned
 	end
 	if cleaned:match("^%d+$") then
-		return AssetThumbnailPath(cleaned)
+		return ResolveIconAssetPath(cleaned)
 	end
 	return cleaned
 end
@@ -482,7 +525,7 @@ function Library:Init(config)
 		previousMouseIconEnabled = UserInputService.MouseIconEnabled
 		UserInputService.MouseIconEnabled = true
 
-if not unlockMouseRenderConn and not RunService:IsBoundToRenderStep(unlockRenderStepName) then
+		if not unlockMouseRenderConn then
 			local ok = pcall(function()
 				RunService:BindToRenderStep(unlockRenderStepName, Enum.RenderPriority.Last.Value + 10, function()
 					if menuVisible then
