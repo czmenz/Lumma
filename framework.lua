@@ -488,10 +488,12 @@ function Library:Init(config)
 		end
 
 		if isVisible then
-			RefreshFadeBases()
 			mainRef.Visible = true
 			popupLayerRef.Visible = true
 			StartMouseUnlock()
+			RefreshFadeBases()
+			menuFadeDriver.Value = 1
+			ApplyMenuFade(1)
 			TweenMenuFade(0, menuFadeDuration, function()
 				if menuVisible then
 					menuFadeDriver.Value = 0
