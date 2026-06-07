@@ -4,9 +4,10 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local GuiService = game:GetService("GuiService")
 local ContextActionService = game:GetService("ContextActionService")
+local ContentProvider = game:GetService("ContentProvider")
 
 local Library = { Tabs = {} }
-local FRAMEWORK_VERSION = "1.0.6"
+local FRAMEWORK_VERSION = "1.0.7"
 local ClientSettings = {
 	ClientColor = Color3.fromRGB(0, 170, 255)
 }
@@ -125,6 +126,41 @@ local function NormalizeIconPath(iconID)
 		return ResolveIconAssetPath(cleaned)
 	end
 	return cleaned
+end
+
+local function ResolveIconSize(iconSize, defaultWidth, defaultHeight)
+	defaultWidth = defaultWidth or 20
+	defaultHeight = defaultHeight or defaultWidth
+
+	if typeof(iconSize) == "UDim2" then
+		return iconSize, iconSize.X.Offset, iconSize.Y.Offset
+	end
+
+	if typeof(iconSize) == "Vector2" then
+		local width = math.max(1, math.floor(iconSize.X + 0.5))
+		local height = math.max(1, math.floor(iconSize.Y + 0.5))
+		return UDim2.new(0, width, 0, height), width, height
+	end
+
+	local source = iconSize
+	if type(iconSize) == "table" and (iconSize.Size or iconSize.IconSize or iconSize.iconSize) then
+		source = iconSize.Size or iconSize.IconSize or iconSize.iconSize
+	end
+
+	local width = defaultWidth
+	local height = defaultHeight
+
+	if type(source) == "number" then
+		width = source
+		height = source
+	elseif type(source) == "table" then
+		width = tonumber(source.X or source.x or source.Width or source.width or source.W or source.w or source[1]) or width
+		height = tonumber(source.Y or source.y or source.Height or source.height or source.H or source.h or source[2]) or height
+	end
+
+	width = math.max(1, math.floor(width + 0.5))
+	height = math.max(1, math.floor(height + 0.5))
+	return UDim2.new(0, width, 0, height), width, height
 end
 
 local function GetStaffInfo()
@@ -513,12 +549,62 @@ function Library:Init(config)
 	local pageTweenIn
 	local pageTweenOut
 	local menuVisible = false
+	local menuTargetVisible = false
+	local menuOpenLoading = false
 	local unlockMouseRenderConn
 	local unlockMouseHeartbeatConn
 	local unlockMouseSteppedConn
 	local unlockRenderStepName = "LUMMA_MouseUnlock_" .. tostring(player.UserId)
 	local previousMouseBehavior
 	local previousMouseIconEnabled
+	local preloadContent = {}
+	local preloadContentSeen = {}
+	local preloadComplete = false
+	local preloadRunning = false
+
+	local function RegisterPreloadContent(content)
+		if type(content) ~= "string" or content == "" then
+			return
+		end
+		if preloadContentSeen[content] then
+			return
+		end
+		preloadContentSeen[content] = true
+		table.insert(preloadContent, content)
+		preloadComplete = false
+	end
+
+	local function PreloadRegisteredContent()
+		if preloadComplete then
+			return
+		end
+
+		while preloadRunning do
+			task.wait()
+		end
+
+		if preloadComplete then
+			return
+		end
+
+		preloadRunning = true
+		local content = {}
+		for _, item in ipairs(preloadContent) do
+			table.insert(content, item)
+		end
+
+		if #content > 0 then
+			local ok, err = pcall(function()
+				ContentProvider:PreloadAsync(content)
+			end)
+			if not ok then
+				warn("Lumma image preload failed: " .. tostring(err))
+			end
+		end
+
+		preloadComplete = true
+		preloadRunning = false
+	end
 
 	local function StartMouseUnlock()
 		previousMouseBehavior = UserInputService.MouseBehavior
@@ -583,35 +669,62 @@ function Library:Init(config)
 
 	local function SetMenuVisible(isVisible)
 		if typeof(mainRef) ~= "Instance" or typeof(popupLayerRef) ~= "Instance" then return end
-		if menuVisible == isVisible then return end
-		menuVisible = isVisible
+		isVisible = isVisible and true or false
+		if menuTargetVisible == isVisible and (not isVisible or menuVisible or menuOpenLoading) then return end
+		menuTargetVisible = isVisible
+
+		if isVisible then
+			if menuVisible or menuOpenLoading then
+				return
+			end
+
+			menuOpenLoading = true
+			task.spawn(function()
+				PreloadRegisteredContent()
+				menuOpenLoading = false
+
+				if not menuTargetVisible or typeof(mainRef) ~= "Instance" or typeof(popupLayerRef) ~= "Instance" then
+					return
+				end
+				if menuVisible then
+					return
+				end
+
+				menuVisible = true
+				mainRef.Visible = true
+				popupLayerRef.Visible = true
+				StartMouseUnlock()
+				menuFadeDriver.Value = 1
+				ApplyMenuFade(1)
+				TweenMenuFade(0, menuFadeDuration, function()
+					if menuVisible then
+						menuFadeDriver.Value = 0
+						ApplyMenuFade(0)
+					end
+				end)
+			end)
+			return
+		end
+
+		if not menuVisible then
+			menuOpenLoading = false
+			return
+		end
+
+		menuVisible = false
 		if not isVisible then
 			CloseActivePopup()
 			CloseInlinePopups()
 		end
 
-		if isVisible then
-			mainRef.Visible = true
-			popupLayerRef.Visible = true
-			StartMouseUnlock()
-			menuFadeDriver.Value = 1
-			ApplyMenuFade(1)
-			TweenMenuFade(0, menuFadeDuration, function()
-				if menuVisible then
-					menuFadeDriver.Value = 0
-					ApplyMenuFade(0)
-				end
-			end)
-		else
-			RefreshFadeBases()
-			TweenMenuFade(1, menuFadeDuration, function()
-				if not menuVisible and typeof(mainRef) == "Instance" and typeof(popupLayerRef) == "Instance" then
-					mainRef.Visible = false
-					popupLayerRef.Visible = false
-				end
-			end)
-			StopMouseUnlock()
-		end
+		RefreshFadeBases()
+		TweenMenuFade(1, menuFadeDuration, function()
+			if not menuVisible and typeof(mainRef) == "Instance" and typeof(popupLayerRef) == "Instance" then
+				mainRef.Visible = false
+				popupLayerRef.Visible = false
+			end
+		end)
+		StopMouseUnlock()
 	end
 
 	local function SelectTab(tabBtn, page, label, icon, fallbackLabel)
@@ -720,21 +833,43 @@ function Library:Init(config)
 	}, side)
 
 	local user = Create("Frame", {Size = UDim2.new(1, 0, 0, 60), Position = UDim2.new(0, 0, 1, -70), BackgroundTransparency = 1, ZIndex = 3}, side)
-	local avatar = Create("ImageLabel", {Size = UDim2.new(0, 38, 0, 38), Position = UDim2.new(0, 15, 0.5, -19), Image = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48), ZIndex = 4}, user)
+	local avatarImage = Players:GetUserThumbnailAsync(player.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size48x48)
+	RegisterPreloadContent(avatarImage)
+	local avatar = Create("ImageLabel", {Size = UDim2.new(0, 38, 0, 38), Position = UDim2.new(0, 15, 0.5, -19), Image = avatarImage, ZIndex = 4}, user)
 	Create("UICorner", {CornerRadius = UDim.new(1, 0)}, avatar)
 	local staffInfo = GetStaffInfo()
-	Create("TextLabel", {
+	if staffInfo then
+		RegisterPreloadContent(staffInfo.Icon)
+	end
+	local userNameLabel = Create("TextLabel", {
 		Name = "UserName",
 		Size = staffInfo and UDim2.new(1, -65, 0, 22) or UDim2.new(1, -65, 1, 0),
 		Position = staffInfo and UDim2.new(0, 65, 0, 9) or UDim2.new(0, 65, 0, 0),
 		Text = player.DisplayName,
 		Font = "GothamMedium",
 		TextSize = 13,
-		TextColor3 = Color3.fromRGB(180, 180, 180),
+		TextColor3 = staffInfo and ClientSettings.ClientColor or Color3.fromRGB(180, 180, 180),
 		TextXAlignment = "Left",
+		TextYAlignment = Enum.TextYAlignment.Center,
 		BackgroundTransparency = 1,
 		ZIndex = 4
 	}, user)
+
+	if staffInfo then
+		local nameWave = Create("UIGradient", {
+			Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, ClientSettings.ClientColor),
+				ColorSequenceKeypoint.new(0.45, Color3.fromRGB(170, 225, 255)),
+				ColorSequenceKeypoint.new(0.55, Color3.fromRGB(255, 255, 255)),
+				ColorSequenceKeypoint.new(1, ClientSettings.ClientColor)
+			}),
+			Offset = Vector2.new(-1, 0)
+		}, userNameLabel)
+		local waveTween = TweenService:Create(nameWave, TweenInfo.new(1.85, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1), {
+			Offset = Vector2.new(1, 0)
+		})
+		waveTween:Play()
+	end
 
 	if staffInfo then
 		local badge = Create("Frame", {
@@ -761,6 +896,7 @@ function Library:Init(config)
 			TextSize = 11,
 			TextColor3 = ClientSettings.ClientColor,
 			TextXAlignment = "Left",
+			TextYAlignment = Enum.TextYAlignment.Center,
 			BackgroundTransparency = 1,
 			ZIndex = 5
 		}, badge)
@@ -789,6 +925,9 @@ function Library:Init(config)
 	end
 
 	self.Unload = function()
+		menuTargetVisible = false
+		menuOpenLoading = false
+		menuVisible = false
 		StopMouseUnlock()
 		if unlockMouseRenderConn then
 			unlockMouseRenderConn = nil
@@ -801,15 +940,18 @@ function Library:Init(config)
 		screen = nil
 	end
 
-	function Library:NewTab(name, iconID)
+	function Library:NewTab(name, iconID, iconSize)
 		local tabBtn = Create("TextButton", {Size = UDim2.new(0.9, 0, 0, 38), Text = "", BackgroundTransparency = 1, ZIndex = 4}, tabHolder)
 		Create("UICorner", {CornerRadius = UDim.new(0, 6)}, tabBtn)
 
 		local iconPath = NormalizeIconPath(iconID)
+		local tabIconSize, tabIconWidth, tabIconHeight = ResolveIconSize(iconSize, 20, 20)
+		local tabLabelOffset = math.max(40, 10 + tabIconWidth + 10)
+		RegisterPreloadContent(iconPath)
 		local icon = Create("ImageLabel", {
 			Name = "TabIcon",
-			Size = UDim2.new(0, 20, 0, 20),
-			Position = UDim2.new(0, 10, 0.5, -10),
+			Size = tabIconSize,
+			Position = UDim2.new(0, 10, 0.5, -math.floor(tabIconHeight / 2)),
 			Image = iconPath or "",
 			ImageColor3 = Color3.fromRGB(255, 255, 255),
 			BackgroundTransparency = 1,
@@ -830,7 +972,7 @@ function Library:Init(config)
 			Visible = iconPath == nil
 		}, tabBtn)
 
-		local label = Create("TextLabel", {Name = "TabLabel", Size = UDim2.new(1, -40, 1, 0), Position = UDim2.new(0, 40, 0, 0), Text = name, Font = "GothamMedium", TextSize = 14, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = "Left", BackgroundTransparency = 1, ZIndex = 5}, tabBtn)
+		local label = Create("TextLabel", {Name = "TabLabel", Size = UDim2.new(1, -tabLabelOffset, 1, 0), Position = UDim2.new(0, tabLabelOffset, 0, 0), Text = name, Font = "GothamMedium", TextSize = 14, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = "Left", BackgroundTransparency = 1, ZIndex = 5}, tabBtn)
 		local page = Create("ScrollingFrame", {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = false, ScrollBarThickness = 0, CanvasSize = UDim2.new(0, 0, 0, 0)}, container)
 
 		local pageLayout = Create("UIListLayout", {Padding = UDim.new(0, 8), SortOrder = "LayoutOrder"}, page)
@@ -946,7 +1088,7 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 		mgr.bar = tabsBar
 		mgr.container = tabsContent
 
-		function mgr:AddTab(name, iconID)
+		function mgr:AddTab(name, iconID, iconSize)
 			local pg = Create("Frame", {
 				Size = UDim2.new(1, 0, 0, 0),
 				AutomaticSize = Enum.AutomaticSize.Y,
@@ -965,20 +1107,23 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 			}, tabsBar)
 			Create("UICorner", {CornerRadius = UDim.new(0, 5)}, btn)
 			local subIconPath = NormalizeIconPath(iconID)
-		Create("ImageLabel", {
+			local subIconSize, subIconWidth, subIconHeight = ResolveIconSize(iconSize, 14, 14)
+			local subLabelOffset = math.max(24, 8 + subIconWidth + 6)
+			RegisterPreloadContent(subIconPath)
+			Create("ImageLabel", {
 				Name = "TabIcon",
-				Size = UDim2.new(0, 14, 0, 14),
-				Position = UDim2.new(0, 8, 0.5, -7),
+				Size = subIconSize,
+				Position = UDim2.new(0, 8, 0.5, -math.floor(subIconHeight / 2)),
 				BackgroundTransparency = 1,
-			Image = subIconPath or "",
-			Visible = subIconPath ~= nil,
+				Image = subIconPath or "",
+				Visible = subIconPath ~= nil,
 				ImageColor3 = Color3.fromRGB(220, 220, 220),
 				ZIndex = 3
 			}, btn)
 			Create("TextLabel", {
 				Name = "TabText",
-				Size = UDim2.new(1, -28, 1, 0),
-				Position = UDim2.new(0, 24, 0, 0),
+				Size = UDim2.new(1, -subLabelOffset, 1, 0),
+				Position = UDim2.new(0, subLabelOffset, 0, 0),
 				BackgroundTransparency = 1,
 				Text = name,
 				Font = Enum.Font.GothamMedium,
@@ -1930,7 +2075,7 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 
 	TrackConnection(UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == toggleKeybind then
-			SetMenuVisible(not menuVisible)
+			SetMenuVisible(not menuTargetVisible)
 		end
 		if input.UserInputType == Enum.UserInputType.MouseButton1 and menuVisible then
 			local point = Vector2.new(input.Position.X, input.Position.Y)
