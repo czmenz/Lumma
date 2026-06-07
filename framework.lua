@@ -7,7 +7,7 @@ local ContextActionService = game:GetService("ContextActionService")
 local ContentProvider = game:GetService("ContentProvider")
 
 local Library = { Tabs = {} }
-local FRAMEWORK_VERSION = "1.0.9"
+local FRAMEWORK_VERSION = "1.0.10"
 local ClientSettings = {
 	ClientColor = Color3.fromRGB(0, 170, 255)
 }
@@ -508,7 +508,26 @@ function Library:Init(config)
 		end
 	end))
 
-	local resizeBtn = Create("TextButton", {Size = UDim2.new(0, 15, 0, 15), Position = UDim2.new(1, -18, 1, -18), BackgroundTransparency = 1, Text = "\u{25E2}", TextColor3 = Color3.fromRGB(40, 40, 45), TextSize = 12, ZIndex = 10, AutoButtonColor = false}, main)
+	local resizeBtn = Create("TextButton", {
+		Size = UDim2.new(0, 18, 0, 18),
+		Position = UDim2.new(1, -23, 1, -23),
+		BackgroundColor3 = Color3.fromRGB(20, 20, 25),
+		BackgroundTransparency = 0.08,
+		Text = "\u{2198}",
+		TextColor3 = Color3.fromRGB(150, 150, 160),
+		TextSize = 13,
+		Font = Enum.Font.GothamBold,
+		ZIndex = 10,
+		AutoButtonColor = false
+	}, main)
+	Create("UICorner", {CornerRadius = UDim.new(0, 4)}, resizeBtn)
+	Create("UIStroke", {Color = Color3.fromRGB(45, 45, 52), Thickness = 1}, resizeBtn)
+	resizeBtn.MouseEnter:Connect(function()
+		resizeBtn.TextColor3 = ClientSettings.ClientColor
+	end)
+	resizeBtn.MouseLeave:Connect(function()
+		resizeBtn.TextColor3 = Color3.fromRGB(150, 150, 160)
+	end)
 	local resizing = false
 	local rStartSize, rStartMouse
 	resizeBtn.InputBegan:Connect(function(input)
@@ -890,8 +909,8 @@ function Library:Init(config)
 		}, badge)
 		Create("TextLabel", {
 			Name = "StaffBadgeText",
-			Size = UDim2.new(1, -20, 0, 14),
-			Position = UDim2.new(0, 20, 0, 0),
+			Size = UDim2.new(1, -16, 0, 16),
+			Position = UDim2.new(0, 16, 0, -1),
 			Text = staffInfo.Text,
 			Font = "GothamMedium",
 			TextSize = 11,
@@ -977,6 +996,7 @@ function Library:Init(config)
 
 		local label = Create("TextLabel", {Name = "TabLabel", Size = UDim2.new(1, -tabLabelOffset, 1, 0), Position = UDim2.new(0, tabLabelOffset, 0, 0), Text = name, Font = "GothamMedium", TextSize = 14, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = "Left", BackgroundTransparency = 1, ZIndex = 5}, tabBtn)
 		local page = Create("ScrollingFrame", {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = false, ScrollBarThickness = 0, CanvasSize = UDim2.new(0, 0, 0, 0)}, container)
+		Create("UIPadding", {PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10)}, page)
 
 		local pageLayout = Create("UIListLayout", {Padding = UDim.new(0, 8), SortOrder = "LayoutOrder"}, page)
 		pageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -1099,6 +1119,7 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 				Visible = false
 			}, tabsContent)
 			Create("UIListLayout", {Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder}, pg)
+			Create("UIPadding", {PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10)}, pg)
 			subPages[name] = pg
 
 			local btn = Create("TextButton", {
@@ -1427,7 +1448,7 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 
 	function Library:AddCategory(parent, title)
 		local section = Create("Frame", {
-			Size = UDim2.new(1, -10, 0, 0),
+			Size = UDim2.new(1, 0, 0, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
 			BackgroundColor3 = Color3.fromRGB(18, 18, 23),
 			BorderSizePixel = 0,
