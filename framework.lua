@@ -6,7 +6,7 @@ local GuiService = game:GetService("GuiService")
 local ContextActionService = game:GetService("ContextActionService")
 
 local Library = { Tabs = {} }
-local FRAMEWORK_VERSION = "1.0.4"
+local FRAMEWORK_VERSION = "1.0.5"
 local ClientSettings = {
 	ClientColor = Color3.fromRGB(0, 170, 255)
 }
@@ -446,7 +446,7 @@ function Library:Init(config)
 		previousMouseIconEnabled = UserInputService.MouseIconEnabled
 		UserInputService.MouseIconEnabled = true
 
-		if not unlockMouseRenderConn then
+if not unlockMouseRenderConn and not RunService:IsBoundToRenderStep(unlockRenderStepName) then
 			local ok = pcall(function()
 				RunService:BindToRenderStep(unlockRenderStepName, Enum.RenderPriority.Last.Value + 10, function()
 					if menuVisible then
@@ -519,10 +519,11 @@ function Library:Init(config)
 			RefreshFadeBases()
 			menuFadeDriver.Value = 1
 			ApplyMenuFade(1)
-			-- small yield to allow GUI to become visible before tween
-			pcall(function()
-				local ok, _ = pcall(function() wait(0.03) end)
-			end)
+			if task and task.wait then
+				task.wait(0.03)
+			elseif wait then
+				wait(0.03)
+			end
 			TweenMenuFade(0, menuFadeDuration, function()
 				if menuVisible then
 					menuFadeDriver.Value = 0
@@ -697,6 +698,7 @@ function Library:Init(config)
 			Image = iconPath or "",
 			ImageColor3 = Color3.fromRGB(255, 255, 255),
 			BackgroundTransparency = 1,
+			Visible = iconPath ~= nil,
 			ZIndex = 5
 		}, tabBtn)
 
@@ -710,7 +712,7 @@ function Library:Init(config)
 			TextColor3 = Color3.fromRGB(255, 255, 255),
 			BackgroundTransparency = 1,
 			ZIndex = 5,
-			Visible = false
+			Visible = iconPath == nil
 		}, tabBtn)
 
 		local label = Create("TextLabel", {Name = "TabLabel", Size = UDim2.new(1, -40, 1, 0), Position = UDim2.new(0, 40, 0, 0), Text = name, Font = "GothamMedium", TextSize = 14, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = "Left", BackgroundTransparency = 1, ZIndex = 5}, tabBtn)
@@ -847,12 +849,14 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 				AutoButtonColor = false
 			}, tabsBar)
 			Create("UICorner", {CornerRadius = UDim.new(0, 5)}, btn)
-			Create("ImageLabel", {
+			local subIconPath = NormalizeIconPath(iconID)
+		Create("ImageLabel", {
 				Name = "TabIcon",
 				Size = UDim2.new(0, 14, 0, 14),
 				Position = UDim2.new(0, 8, 0.5, -7),
 				BackgroundTransparency = 1,
-				Image = NormalizeIconPath(iconID) or "",
+			Image = subIconPath or "",
+			Visible = subIconPath ~= nil,
 				ImageColor3 = Color3.fromRGB(220, 220, 220),
 				ZIndex = 3
 			}, btn)
