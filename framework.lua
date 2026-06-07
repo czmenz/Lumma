@@ -49,6 +49,29 @@ local function GetMousePosition()
 	return Vector2.new(mouse.X, mouse.Y)
 end
 
+local function NormalizeIconPath(iconID)
+	if not iconID then
+		return nil
+	end
+	if type(iconID) == "number" then
+		return "rbxassetid://" .. tostring(iconID)
+	end
+	if type(iconID) ~= "string" then
+		return nil
+	end
+	local cleaned = iconID:gsub("%s+", "")
+	if cleaned == "" then
+		return nil
+	end
+	if cleaned:match("^rbxassetid://") or cleaned:match("^rbxasset://") or cleaned:match("^https?://") then
+		return cleaned
+	end
+	if cleaned:match("^%d+$") then
+		return "rbxassetid://" .. cleaned
+	end
+	return cleaned
+end
+
 local function IsPointInsideGui(guiObject, point)
 	if not guiObject or not guiObject.Visible then return false end
 	local pos = guiObject.AbsolutePosition
@@ -666,11 +689,12 @@ function Library:Init(config)
 		local tabBtn = Create("TextButton", {Size = UDim2.new(0.9, 0, 0, 38), Text = "", BackgroundTransparency = 1, ZIndex = 4}, tabHolder)
 		Create("UICorner", {CornerRadius = UDim.new(0, 6)}, tabBtn)
 
+		local iconPath = NormalizeIconPath(iconID)
 		local icon = Create("ImageLabel", {
 			Name = "TabIcon",
 			Size = UDim2.new(0, 20, 0, 20),
 			Position = UDim2.new(0, 10, 0.5, -10),
-			Image = "rbxassetid://" .. iconID,
+			Image = iconPath or "",
 			ImageColor3 = Color3.fromRGB(255, 255, 255),
 			BackgroundTransparency = 1,
 			ZIndex = 5
@@ -828,7 +852,7 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 				Size = UDim2.new(0, 14, 0, 14),
 				Position = UDim2.new(0, 8, 0.5, -7),
 				BackgroundTransparency = 1,
-				Image = "rbxassetid://" .. iconID,
+				Image = NormalizeIconPath(iconID) or "",
 				ImageColor3 = Color3.fromRGB(220, 220, 220),
 				ZIndex = 3
 			}, btn)
