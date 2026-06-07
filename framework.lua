@@ -491,9 +491,14 @@ function Library:Init(config)
 			mainRef.Visible = true
 			popupLayerRef.Visible = true
 			StartMouseUnlock()
+			-- Ensure base transparencies are captured from visible state
 			RefreshFadeBases()
 			menuFadeDriver.Value = 1
 			ApplyMenuFade(1)
+			-- small yield to allow GUI to become visible before tween
+			pcall(function()
+				local ok, _ = pcall(function() wait(0.03) end)
+			end)
 			TweenMenuFade(0, menuFadeDuration, function()
 				if menuVisible then
 					menuFadeDriver.Value = 0
