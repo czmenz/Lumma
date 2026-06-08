@@ -1565,9 +1565,20 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 		return row, valueHolder
 	end
 
-	function Library:AddCategoryInfo(sectionRows, text)
-		local row = Create("Frame", {Size = UDim2.new(1, 0, 0, 24), BackgroundTransparency = 1}, sectionRows)
-		Create("TextLabel", {Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = text, Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = Color3.fromRGB(160, 160, 170), TextXAlignment = Enum.TextXAlignment.Left}, row)
+	function Library:AddCategoryInfo(sectionRows, text, height)
+		local row = Create("Frame", {Size = UDim2.new(1, 0, 0, height or 24), BackgroundTransparency = 1}, sectionRows)
+		local label = Create("TextLabel", {
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			Text = text,
+			Font = Enum.Font.GothamMedium,
+			TextSize = 12,
+			TextColor3 = Color3.fromRGB(160, 160, 170),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextWrapped = true
+		}, row)
+		return label, row
 	end
 
 	function Library:AddCategoryToggle(sectionRows, name, defaultState, callback)
