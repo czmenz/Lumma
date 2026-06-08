@@ -874,11 +874,6 @@ function Library:Init(config)
 			return
 		end
 		isUnloading = true
-		if configStatus == "Production" then
-			local p = Players.LocalPlayer
-			if p then p:Kick("Thank you for using Lumma <3") end
-			return
-		end
 		menuTargetVisible = false
 		menuOpenLoading = false
 		menuVisible = false
@@ -893,6 +888,12 @@ function Library:Init(config)
 		if activePopupTween then
 			activePopupTween:Cancel()
 			activePopupTween = nil
+		end
+
+		if configStatus == "Production" then
+			local p = Players.LocalPlayer
+			if p then p:Kick("Thank you for using Lumma <3") end
+			return
 		end
 
 		if closeCallback then
