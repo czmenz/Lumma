@@ -629,13 +629,13 @@ function Library:Init(config)
 	local function StartMouseUnlock()
 		previousMouseBehavior = UserInputService.MouseBehavior
 		previousMouseIconEnabled = UserInputService.MouseIconEnabled
-		UserInputService.MouseIconEnabled = true
+		EnforceUnlockedMouse()
 
 		if not unlockMouseRenderConn then
 			local ok = pcall(function()
 				RunService:BindToRenderStep(unlockRenderStepName, Enum.RenderPriority.Last.Value + 10, function()
 					if menuVisible then
-						UserInputService.MouseIconEnabled = true
+						EnforceUnlockedMouse()
 					end
 				end)
 			end)
@@ -647,7 +647,7 @@ function Library:Init(config)
 		if not unlockMouseHeartbeatConn then
 			unlockMouseHeartbeatConn = RunService.Heartbeat:Connect(function()
 				if menuVisible then
-					UserInputService.MouseIconEnabled = true
+					EnforceUnlockedMouse()
 				end
 			end)
 		end
@@ -655,13 +655,13 @@ function Library:Init(config)
 		if not unlockMouseSteppedConn then
 			unlockMouseSteppedConn = RunService.Stepped:Connect(function()
 				if menuVisible then
-					UserInputService.MouseIconEnabled = true
+					EnforceUnlockedMouse()
 				end
 			end)
 		end
 	end
 
-	local function StopMouseUnlock()
+	local function StopMouseUnlock(forceDefault)
 		if unlockMouseRenderConn then
 			pcall(function()
 				RunService:UnbindFromRenderStep(unlockRenderStepName)
@@ -679,12 +679,19 @@ function Library:Init(config)
 			unlockMouseSteppedConn = nil
 		end
 
-		if previousMouseBehavior then
+		if forceDefault then
+			EnforceUnlockedMouse()
+		elseif previousMouseBehavior then
 			UserInputService.MouseBehavior = previousMouseBehavior
-		end
-		if previousMouseIconEnabled ~= nil then
+			if previousMouseIconEnabled ~= nil then
+				UserInputService.MouseIconEnabled = previousMouseIconEnabled
+			end
+		elseif previousMouseIconEnabled ~= nil then
 			UserInputService.MouseIconEnabled = previousMouseIconEnabled
 		end
+
+		previousMouseBehavior = nil
+		previousMouseIconEnabled = nil
 	end
 
 	local function SetMenuVisible(isVisible)
@@ -948,7 +955,7 @@ function Library:Init(config)
 		menuTargetVisible = false
 		menuOpenLoading = false
 		menuVisible = false
-		StopMouseUnlock()
+		StopMouseUnlock(true)
 		if unlockMouseRenderConn then
 			unlockMouseRenderConn = nil
 		end
@@ -958,6 +965,7 @@ function Library:Init(config)
 			end)
 		end
 		screen = nil
+		EnforceUnlockedMouse()
 	end
 
 	function Library:NewTab(name, iconID, iconSize)
