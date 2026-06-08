@@ -33,6 +33,7 @@ local menuFadeDriver = Instance.new("NumberValue")
 local menuFadeTween
 local mainRef = nil
 local popupLayerRef = nil
+local configStatus = "Debug"
 local closeKeybind = Enum.KeyCode.Insert
 local toggleKeybind = closeKeybind
 local closeCallback
@@ -409,6 +410,7 @@ function Library:Init(config)
 	config = config or {}
 	local scriptVersion = config.Version or FRAMEWORK_VERSION
 	local menuFadeDuration = config.FadeDuration or 0.12
+	configStatus = config.Status or "Debug"
 
 	if config.AllowedPlaceIds and type(config.AllowedPlaceIds) == "table" then
 		allowedPlaceIds = config.AllowedPlaceIds
@@ -872,6 +874,11 @@ function Library:Init(config)
 			return
 		end
 		isUnloading = true
+		if configStatus == "Production" then
+			local p = Players.LocalPlayer
+			if p then p:Kick("Thank you for using Lumma <3") end
+			return
+		end
 		menuTargetVisible = false
 		menuOpenLoading = false
 		menuVisible = false
@@ -1768,6 +1775,7 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 		local arrow = Create("TextLabel", {Size = UDim2.new(0, 14, 1, 0), Position = UDim2.new(1, -16, 0, -1), BackgroundTransparency = 1, Text = "v", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Color3.fromRGB(185, 185, 185), TextXAlignment = Enum.TextXAlignment.Center, TextYAlignment = Enum.TextYAlignment.Center}, holder)
 
 		local selected = {}
+		local optionRefreshFunctions = {}
 		for _, option in ipairs(options) do
 			selected[option] = defaultSelectedMap and defaultSelectedMap[option] == true or false
 		end
@@ -1834,6 +1842,7 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 				refreshLabel()
 				if callback then callback(cloneSelected()) end
 			end)
+			optionRefreshFunctions[option] = refreshMark
 
 			refreshMark()
 		end
@@ -1877,7 +1886,15 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 
 		refreshLabel()
 		if callback then callback(cloneSelected()) end
-		return holder
+		local api = {Button = holder, Set = function(newMap)
+			for option, refresh in pairs(optionRefreshFunctions) do
+				selected[option] = newMap[option] == true
+				refresh()
+			end
+			refreshLabel()
+			if callback then callback(cloneSelected()) end
+		end}
+		return api
 	end
 
 	function Library:AddCategoryColorPicker(sectionRows, name, defaultColor, callback)
@@ -2113,7 +2130,6 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 	popupLayer.Visible = false
 	ApplyMenuFade(0)
 
-	print("Loaded Lumma Framework - v" .. FRAMEWORK_VERSION)
 	return self
 end
 
