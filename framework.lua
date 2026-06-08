@@ -383,9 +383,9 @@ local function TweenMenuFade(target, duration, onDone)
 end
 
 menuFadeDriver.Value = 1
-menuFadeDriver:GetPropertyChangedSignal("Value"):Connect(function()
+TrackConnection(menuFadeDriver:GetPropertyChangedSignal("Value"):Connect(function()
 	ApplyMenuFade(menuFadeDriver.Value)
-end)
+end))
 
 Library.SetToggleKeybind = function(key)
  	if typeof(key) == "EnumItem" then
@@ -394,7 +394,7 @@ Library.SetToggleKeybind = function(key)
  end
 
 Library.SetCloseCallback = function(cb)
-	if type(cb) == "function" then
+	if cb == nil or type(cb) == "function" then
 		closeCallback = cb
 	end
 end
@@ -570,6 +570,7 @@ function Library:Init(config)
 	local preloadContentSeen = {}
 	local preloadComplete = false
 	local preloadRunning = false
+	local isUnloading = false
 
 	local function RegisterPreloadContent(content)
 		if type(content) ~= "string" or content == "" then
@@ -737,11 +738,7 @@ function Library:Init(config)
 		closeBtn.TextColor3 = Color3.fromRGB(220, 220, 220)
 	end)
 	closeBtn.MouseButton1Click:Connect(function()
-		if closeCallback then
-			closeCallback()
-		else
-			self:Unload()
-		end
+		self:Unload()
 	end)
 
 	local titleWrap = Create("Frame", {
@@ -871,15 +868,60 @@ function Library:Init(config)
 	end
 
 	self.Unload = function()
+		if isUnloading then
+			return
+		end
+		isUnloading = true
 		menuTargetVisible = false
 		menuOpenLoading = false
 		menuVisible = false
+
+		CloseActivePopup()
+		CloseInlinePopups()
+
+		if menuFadeTween then
+			menuFadeTween:Cancel()
+			menuFadeTween = nil
+		end
+		if activePopupTween then
+			activePopupTween:Cancel()
+			activePopupTween = nil
+		end
+
+		if closeCallback then
+			local callback = closeCallback
+			closeCallback = nil
+			pcall(callback)
+		end
+
+		for i = #trackedConnections, 1, -1 do
+			local conn = trackedConnections[i]
+			if conn then
+				pcall(function()
+					conn:Disconnect()
+				end)
+			end
+			trackedConnections[i] = nil
+		end
+
+		pcall(function()
+			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+			UserInputService.MouseIconEnabled = true
+		end)
+
 		if screen and screen.Parent then
 			pcall(function()
 				screen:Destroy()
 			end)
 		end
 		screen = nil
+		mainRef = nil
+		popupLayerRef = nil
+		activePopup = nil
+		activePopupAnchor = nil
+		activePopupArrow = nil
+		table.clear(inlinePopupClosers)
+		table.clear(externalFadeRoots)
 	end
 
 	function Library:NewTab(name, iconID, iconSize)
@@ -2066,9 +2108,6 @@ local pageHeaderSpacer = Create("Frame", {Name = "PageHeaderSpacer", Size = UDim
 
 	RefreshFadeBases()
 	menuFadeDriver.Value = 1
-	menuFadeDriver:GetPropertyChangedSignal("Value"):Connect(function()
-		ApplyMenuFade(menuFadeDriver.Value)
-	end)
 
 	main.Visible = false
 	popupLayer.Visible = false
