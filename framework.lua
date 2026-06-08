@@ -387,11 +387,6 @@ menuFadeDriver:GetPropertyChangedSignal("Value"):Connect(function()
 	ApplyMenuFade(menuFadeDriver.Value)
 end)
 
-local function EnforceUnlockedMouse()
-	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-	UserInputService.MouseIconEnabled = true
-end
-
 Library.SetToggleKeybind = function(key)
  	if typeof(key) == "EnumItem" then
  		toggleKeybind = key
@@ -571,12 +566,6 @@ function Library:Init(config)
 	local menuVisible = false
 	local menuTargetVisible = false
 	local menuOpenLoading = false
-	local unlockMouseRenderConn
-	local unlockMouseHeartbeatConn
-	local unlockMouseSteppedConn
-	local unlockRenderStepName = "LUMMA_MouseUnlock_" .. tostring(player.UserId)
-	local previousMouseBehavior
-	local previousMouseIconEnabled
 	local preloadContent = {}
 	local preloadContentSeen = {}
 	local preloadComplete = false
@@ -626,74 +615,6 @@ function Library:Init(config)
 		preloadRunning = false
 	end
 
-	local function StartMouseUnlock()
-		previousMouseBehavior = UserInputService.MouseBehavior
-		previousMouseIconEnabled = UserInputService.MouseIconEnabled
-		EnforceUnlockedMouse()
-
-		if not unlockMouseRenderConn then
-			local ok = pcall(function()
-				RunService:BindToRenderStep(unlockRenderStepName, Enum.RenderPriority.Last.Value + 10, function()
-					if menuVisible then
-						EnforceUnlockedMouse()
-					end
-				end)
-			end)
-			if ok then
-				unlockMouseRenderConn = true
-			end
-		end
-
-		if not unlockMouseHeartbeatConn then
-			unlockMouseHeartbeatConn = RunService.Heartbeat:Connect(function()
-				if menuVisible then
-					EnforceUnlockedMouse()
-				end
-			end)
-		end
-
-		if not unlockMouseSteppedConn then
-			unlockMouseSteppedConn = RunService.Stepped:Connect(function()
-				if menuVisible then
-					EnforceUnlockedMouse()
-				end
-			end)
-		end
-	end
-
-	local function StopMouseUnlock(forceDefault)
-		if unlockMouseRenderConn then
-			pcall(function()
-				RunService:UnbindFromRenderStep(unlockRenderStepName)
-			end)
-			unlockMouseRenderConn = nil
-		end
-
-		if unlockMouseHeartbeatConn then
-			unlockMouseHeartbeatConn:Disconnect()
-			unlockMouseHeartbeatConn = nil
-		end
-
-		if unlockMouseSteppedConn then
-			unlockMouseSteppedConn:Disconnect()
-			unlockMouseSteppedConn = nil
-		end
-
-		if forceDefault then
-			EnforceUnlockedMouse()
-		elseif previousMouseBehavior then
-			UserInputService.MouseBehavior = previousMouseBehavior
-			if previousMouseIconEnabled ~= nil then
-				UserInputService.MouseIconEnabled = previousMouseIconEnabled
-			end
-		elseif previousMouseIconEnabled ~= nil then
-			UserInputService.MouseIconEnabled = previousMouseIconEnabled
-		end
-
-		previousMouseBehavior = nil
-		previousMouseIconEnabled = nil
-	end
-
 	local function SetMenuVisible(isVisible)
 		if typeof(mainRef) ~= "Instance" or typeof(popupLayerRef) ~= "Instance" then return end
 		isVisible = isVisible and true or false
@@ -720,7 +641,6 @@ function Library:Init(config)
 				menuVisible = true
 				mainRef.Visible = true
 				popupLayerRef.Visible = true
-				StartMouseUnlock()
 				menuFadeDriver.Value = 1
 				ApplyMenuFade(1)
 				TweenMenuFade(0, menuFadeDuration, function()
@@ -751,7 +671,6 @@ function Library:Init(config)
 				popupLayerRef.Visible = false
 			end
 		end)
-		StopMouseUnlock()
 	end
 
 	local function SelectTab(tabBtn, page, label, icon, fallbackLabel)
@@ -955,17 +874,12 @@ function Library:Init(config)
 		menuTargetVisible = false
 		menuOpenLoading = false
 		menuVisible = false
-		StopMouseUnlock(true)
-		if unlockMouseRenderConn then
-			unlockMouseRenderConn = nil
-		end
 		if screen and screen.Parent then
 			pcall(function()
 				screen:Destroy()
 			end)
 		end
 		screen = nil
-		EnforceUnlockedMouse()
 	end
 
 	function Library:NewTab(name, iconID, iconSize)
